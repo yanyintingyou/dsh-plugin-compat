@@ -1,5 +1,7 @@
 # dsh-plugin-compat
 
+[![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)
+
 [English](README.md) | [中文](README.zh.md)
 
 dsh checks `engines.dsh` when it installs or activates a plugin, and falls back to the plugin's `@deepseek-ai/dsh-*` peer dependencies. Local plugins written by hand usually declare neither. After an upgrade, nothing tells you whether they still load. This plugin runs that check on the first start after a version change, writes a report, and leaves the fixing to you.
@@ -83,5 +85,3 @@ Keep the directory somewhere stable. In dsh, run `plugin_manager` with `install_
 ## License
 
 MIT. See [LICENSE](LICENSE).
-
-[![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)

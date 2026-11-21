@@ -1,5 +1,7 @@
 # dsh-plugin-compat
 
+[![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)
+
 [English](README.md) | [中文](README.zh.md)
 
 dsh 安装或激活插件时会检查 `engines.dsh`，没有这个字段就退回插件的 `@deepseek-ai/dsh-*` peer 依赖。自己写的本地插件通常两个都不声明，升级之后没人告诉你它还能不能加载。这个插件在版本变化后的第一次启动里做这项检查，写一份报告，修复留给你。
@@ -83,5 +85,3 @@ profile 里的残留也会列出来：`node_modules` 里指向不存在目录的
 ## 许可
 
 MIT，见 [LICENSE](LICENSE)。
-
-[![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)
