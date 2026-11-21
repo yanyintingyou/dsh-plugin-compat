@@ -1,0 +1,6 @@
+- insert:
+    - id: plugin-compat
+      name: '@local/dsh-plugin-compat'
+      config:
+        checkOnBoot: true
+        checkLatest: true

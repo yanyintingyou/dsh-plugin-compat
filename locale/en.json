@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Plugin compatibility check",
+    "description": "After a dsh upgrade, reports whether the plugins you installed still work: activation, version guards, leftover links. Read-only.",
+    "detail": "docs/DETAIL.md"
+  }
+}
