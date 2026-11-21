@@ -83,3 +83,5 @@ profile 里的残留也会列出来：`node_modules` 里指向不存在目录的
 ## 许可
 
 MIT，见 [LICENSE](LICENSE)。
+
+[![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)
