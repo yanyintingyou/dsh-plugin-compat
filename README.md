@@ -2,79 +2,66 @@
 
 [English](README.md) | [中文](README.zh.md)
 
-A DeepSeek Harness (dsh) Host plugin. After a dsh upgrade it checks the plugins you installed yourself, reports whether each one still activates and what its version guard says, then stops. It never enables, disables, updates or edits a plugin.
+dsh checks `engines.dsh` when it installs or activates a plugin, and falls back to the plugin's `@deepseek-ai/dsh-*` peer dependencies. Local plugins written by hand usually declare neither. After an upgrade, nothing tells you whether they still load. This plugin runs that check on the first start after a version change, writes a report, and leaves the fixing to you.
 
-## Why it exists
-
-dsh gates plugins at install and activation time through `engines.dsh`, or else through `@deepseek-ai/dsh-*` peer dependencies. Hand-written local bundles usually declare neither. Nothing tells you whether they still work after an upgrade, so this plugin produces that report.
+It stays read-only: it never enables, disables, updates, removes or edits a plugin.
 
 ## What it checks
 
-- **Activation.** Each loader row's `enabled`, `fiberPhase` and diagnostic, read from the plugin manager. `active` means the module imported, `apply` returned, and injected services existed. `failed` carries the original diagnostic.
-- **Version guard.** `engines.dsh`, else the dsh peer dependencies. The plugin also flags rows the manager rejects as `incompatible-version`, with the unmet ranges, and rows running on an exact-version exemption.
-- **Official on-demand bundles.** Bundles from the official catalog that were installed at an older runtime version. They do not update themselves and need reinstalling at the current version.
-- **Profile leftovers.** Links in `node_modules` that point at a missing directory, bundles selected but not installed, and dependencies that are not plugin bundles.
+Activation comes straight from the plugin manager. Each loader row reports `enabled`, `fiberPhase` and a diagnostic. `active` means the module imported, `apply` returned, and the injected services existed. `failed` carries the original diagnostic, which goes into the report.
 
-Official bundles shipped with the installation are skipped: their version always equals the dsh version.
+The version guard is `engines.dsh`, or the dsh peer dependencies when that field is absent. A plugin the manager rejects as `incompatible-version` gets its own line with the ranges that failed. So does a plugin running under an exact-version exemption.
+
+The checker skips official bundles that ship inside the installation. Their version always equals the dsh version.
+
+Official catalog bundles installed on demand get their own entry. They pin the runtime version they were installed under, do not update themselves, and need a reinstall at the current version.
+
+Profile leftovers also appear: links in `node_modules` that point at a missing directory, bundles selected but never installed, and dependencies that are not plugin bundles.
 
 ## When it runs
 
-Every start evaluates once, and only these conditions run a check:
+Every start evaluates once and runs a check only when one of these holds:
 
-- the dsh version differs from the recorded one (the path an upgrade takes);
-- the installation anchor's `package.json` changed (a reinstall of the same version);
+- the dsh version differs from the recorded one, which covers an upgrade;
+- the installation's `package.json` changed, which covers a reinstall of the same version;
 - the profile's dependency or bundle list changed;
-- the last run did not finish.
+- the previous run did not finish.
 
-Beyond that, `plugin-manager/changed` and `app-boot/config-reload` coalesce into one check 1.5 seconds after the last event. The tool's `check` action runs one on demand.
+Two events also trigger it: `plugin-manager/changed` and `app-boot/config-reload`. Both coalesce into one check 1.5 seconds after the last event. The tool's `check` action runs one on the spot.
 
-The first sample lands 3 seconds after start. If any row is still `pending` or `loading`, one more sample follows 7 seconds later.
+The first sample lands three seconds after start. Any row still `pending` or `loading` gets a second sample seven seconds later. User messages, turns, model requests and file watching never trigger a check.
 
-User messages, turns, model requests and file watching never trigger a check.
+## Files
 
-## What it writes
+Everything goes to `~/.dsh/plugin-compat/`, and the plugin keeps the three newest reports:
 
-Only its own directory, `~/.dsh/plugin-compat/` by default:
+- `state.json` holds the last runtime version, an install stamp, the plugin list, and the cached registry version.
+- `report-<version>.json` is the full report.
+- `report.md` is the same report written for reading.
 
-- `state.json`: last runtime version, install stamp, plugin list, cached registry version.
-- `report-<version>.json`: the full report.
-- `report.md`: the same report for reading.
-
-The plugin keeps the three newest reports and deletes older ones.
-
-## The report
-
-The plugin row and every finding carry a verdict and a guard state:
-
-- Verdict: normal, broken, not ready, or disabled.
-- Guard: declared, exempted, missing, unmet, or unknown.
-- Pending items count broken rows, rows not ready, plugins running on an exemption, enabled plugins without a guard, stale official bundles, and profile leftovers.
-
-Each finding lists its evidence and one suggested action, with the place to do it: the plugin page, `plugin_manager`, or the plugin source.
+Each plugin entry carries a run state (normal, broken, not ready, disabled) and a guard state (declared, exempted, none, unmet, unknown). The pending count adds up broken rows, rows not ready, plugins on an exemption, enabled plugins without a guard, stale official bundles, and profile leftovers. Every pending item lists its evidence, one suggested action, and where to do it: the plugin page, `plugin_manager`, or the plugin source.
 
 ## Tool
 
-`plugin_compat`, read-only:
+`plugin_compat` offers three actions:
 
 - `status` reads the latest report.
-- `check` re-runs it now and refreshes the registry lookup.
+- `check` runs a check now and refreshes the registry lookup.
 - `explain <name>` returns one plugin's rows, evidence and suggestion.
 
-## Development builds
+## Prerelease builds
 
-On a prerelease runtime such as `0.2.2-rc.5`, a plugin that declares a stable range (`^0.2.2`) does not satisfy the range. That is normal range semantics, and the same plugin turns compatible when the stable release lands. Exemptions bind to one exact runtime version, so an exemption granted on `0.2.2-rc.5` stops applying on `0.2.2-rc.6`, and the plugin needs a new grant.
+On a prerelease runtime such as `0.2.2-rc.5`, a plugin that declares a stable range like `^0.2.2` does not satisfy that range. That follows from how semver treats prereleases, and the same plugin becomes compatible once the stable release ships. An exemption binds to one exact runtime version, so one granted on `0.2.2-rc.5` lapses on `0.2.2-rc.6`.
 
 ## Limits
 
-- Client halves are not verified. A plugin whose Host rows are all `active` can still render nothing in the browser; the report names the bundles that carry `dsh.client`.
-- Upgrade-guide contract matching is not implemented. A renamed method or slot prop does not show up here.
-- No periodic check for new dsh releases. The report records the registry's `latest` tag whenever a check runs.
+- The plugin does not verify browser-side halves. A plugin with every Host row `active` can still render nothing in the page; the report names the bundles that carry `dsh.client`.
+- Upgrade-guide matching is not implemented, so a renamed method or slot prop stays invisible here.
+- No periodic check for a newer dsh. Each check records the registry's `latest` tag while it runs.
 
 ## Install
 
-1. Keep this directory somewhere stable.
-2. In dsh, run `plugin_manager` with action `install_bundle` and the absolute directory path, or open **Plugins → Add plugin** and pick the directory.
-3. The first report is written about 3 seconds after the plugin activates. Call `plugin_compat status` to read it.
+Keep the directory somewhere stable. In dsh, run `plugin_manager` with `install_bundle` and the absolute path, or open **Plugins → Add plugin** and pick the directory. The first report appears about three seconds after activation; `plugin_compat status` reads it.
 
 ## Configure
 
@@ -87,7 +74,7 @@ On a prerelease runtime such as `0.2.2-rc.5`, a plugin that declares a stable ra
 ```
 
 | Key | Default | Effect |
-|---|---|---|
+| --- | --- | --- |
 | `checkOnBoot` | `true` | Evaluate after start |
 | `checkLatest` | `true` | Query the registry for the newest dsh version |
 | `stateDir` | `~/.dsh/plugin-compat` | Where state and reports go |
